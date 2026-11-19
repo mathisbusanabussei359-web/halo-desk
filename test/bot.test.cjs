@@ -55,3 +55,26 @@ test('tâches numérotées et commandes de jeu', () => {
   assert.match(runCommand('dé 2', empty).message, /faces : [12]\./)
   assert.match(runCommand('pile ou face', empty).message, /^(Pile|Face) !$/)
 })
+
+test('plusieurs formulations lancent le même minuteur', () => {
+  const expected = runCommand('minuteur 5m', empty, 100)
+  for (const text of ['minuteur 5 minutes', 'Lance un minuteur de 5 minutes !',
+    'Peux-tu démarrer un chrono pour 5 min ?', 'mets un minuteur de 5 minutes s’il te plaît']) {
+    assert.deepEqual(runCommand(text, empty, 100), expected, text)
+  }
+  assert.equal(runCommand('lance un pomodoro de 1,5 heure', empty, 0).patch.timer.end, 5400000)
+  assert.equal(runCommand('minuteur 90 secondes', empty, 0).patch.timer.end, 90000)
+  assert.equal(runCommand('lance un minuteur de 25 heures', empty).patch, undefined)
+})
+
+test('les formulations naturelles préservent le contenu saisi', () => {
+  const note = runCommand('Peux-tu prendre une note', empty)
+  assert.equal(note.patch, undefined)
+  assert.equal(runCommand('Prends une note : Écrire à Éloïse !', empty).patch.notes[0].text, 'Écrire à Éloïse !')
+  assert.equal(runCommand('Ajoute une tâche : Lire le dossier.', empty).patch.tasks[0].text, 'Lire le dossier.')
+  assert.equal(runCommand('Montre-moi mes notes ?', empty).view, 'notes')
+  assert.equal(runCommand('Ouvre GitHub !', empty).url, 'https://github.com/')
+  assert.equal(runCommand('Calcule 5 * 3', empty).message, 'Résultat : 15')
+  const active = { ...empty, ...runCommand('minuteur 5m', empty, 0).patch }
+  assert.equal(runCommand('Mets le minuteur en pause', active, 2000).patch.timer.remaining, 298000)
+})

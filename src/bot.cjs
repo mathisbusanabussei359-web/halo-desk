@@ -7,10 +7,42 @@ const destinations = Object.freeze({
 })
 
 const help = [
-  'Temps · minuteur 5m, focus 25m, pause, reprendre, annuler, date',
+  'Temps · lance un minuteur de 5 minutes, focus 25m, mets en pause, reprends le minuteur, annule le minuteur',
   'Organisation · note Acheter du café, notes, tâche Envoyer le dossier, tâches, fait 1',
   'Outils · calc (12 + 3) * 4, copier mon texte, dé 20, pile ou face, ouvrir agenda'
 ].join('\n')
+
+function interpret(input) {
+  const text = input.trim()
+    .replace(/^(?:peux-tu|tu peux)\s+/i, '')
+    .replace(/^s['’]il te plaît[, ]+/i, '')
+  const sentence = text.replace(/[.!?]+$/, '').trim().replace(/\s+s['’]il te plaît$/i, '')
+  if (/^(?:mets? (?:le minuteur )?en pause|suspends? le minuteur)$/i.test(sentence)) return ['pause', '']
+  if (/^(?:reprends?|relance) le minuteur$/i.test(sentence)) return ['reprendre', '']
+  if (/^(?:annule|arrête|arrete|stoppe) (?:le |mon )?(?:minuteur|chrono|focus)$/i.test(sentence)) return ['annuler', '']
+  if (/^(?:affiche|montre)(?:-moi)? (?:mes|les) notes$/i.test(sentence)) return ['notes', '']
+  if (/^(?:affiche|montre)(?:-moi)? (?:mes|les) t[âa]ches$/i.test(sentence)) return ['tâches', '']
+  if (/^(?:quelle heure est-il|quelle est la date|on est quel jour)$/i.test(sentence)) return ['date', '']
+
+  const timer = sentence.match(/^(?:(?:lance[rz]?|démarre[rz]?|demarre[rz]?|mets?|mettre|programme[rz]?|règle[rz]?)\s+(?:(?:moi\s+)?(?:un|le)\s+)?)?(minuteur|chrono|focus|pomodoro)(?:\s+(?:(?:de|pour|sur)\s+)?(.+))?$/i)
+  if (timer) return [/(focus|pomodoro)/i.test(timer[1]) ? 'focus' : 'minuteur', timer[2] ?? '']
+
+  const phrase = text.match(/^(?:ajoute (?:une )?t[âa]che|note que|prends une note|termine (?:la )?t[âa]che|calcule|ouvre|copie)(?:\s*:\s*|\s+)([\s\S]+)$/i)
+  if (phrase) {
+    const firstWord = phrase[0].match(/^\w+/)[0].toLowerCase()
+    const command = { ajoute: 'tâche', note: 'note', prends: 'note', termine: 'fait', calcule: 'calc', ouvre: 'ouvrir', copie: 'copier' }
+    return [command[firstWord], phrase[1]]
+  }
+  const [, raw = '', argument = ''] = text.match(/^(\S+)(?:\s+([\s\S]+))?$/) ?? []
+  return [raw.toLowerCase(), argument]
+}
+
+function durationSeconds(text) {
+  const match = text.match(/^(\d+(?:[.,]\d+)?)\s*(s(?:ec(?:ondes?)?)?|m(?:in(?:utes?)?)?|h(?:eures?)?)?$/i)
+  if (!match) return 0
+  const unit = match[2]?.[0].toLowerCase() ?? 'm'
+  return Number(match[1].replace(',', '.')) * { s: 1, m: 60, h: 3600 }[unit]
+}
 
 function calculate(input) {
   const tokens = input.match(/\d+(?:[.,]\d+)?|[^\s]/g) ?? []
@@ -57,16 +89,15 @@ function calculate(input) {
 }
 
 function runCommand(input, state, now = Date.now()) {
-  const [, raw = '', argument = ''] = input.trim().match(/^(\S+)(?:\s+([\s\S]+))?$/) ?? []
+  const [raw, argument] = interpret(input)
   const tasks = state.tasks ?? []
   switch (raw.toLowerCase()) {
     case 'aide': return { message: help }
     case 'minuteur':
     case 'focus': {
-      const match = (argument || (raw.toLowerCase() === 'focus' ? '25m' : '')).match(/^(\d+)\s*([smh]?)$/i)
-      const seconds = match ? Number(match[1]) * ({ s: 1, m: 60, h: 3600, '': 60 })[match[2].toLowerCase()] : 0
+      const seconds = durationSeconds(argument || (raw === 'focus' ? '25m' : ''))
       if (seconds < 1 || seconds > 86400) return { message: 'Indique une durée de 1 seconde à 24 heures. Exemple : minuteur 90s.' }
-      const label = raw.toLowerCase() === 'focus' ? 'Focus' : 'Minuteur'
+      const label = raw === 'focus' ? 'Focus' : 'Minuteur'
       return { message: state.timer ? 'Minuteur remplacé.' : label + ' lancé.', patch: { timer: { end: now + seconds * 1000, label } } }
     }
     case 'annuler':
@@ -114,7 +145,7 @@ function runCommand(input, state, now = Date.now()) {
       catch (error) { return { message: error.message } }
     case 'copier': return argument ? { message: 'Texte copié.', copy: argument } : { message: 'Indique le texte à copier.' }
     case 'ouvrir': {
-      const name = argument.toLowerCase()
+      const name = argument.toLowerCase().replace(/[.!?]+$/, '').trim()
       return Object.hasOwn(destinations, name) ? { message: 'Ouverture de ' + name + '…', url: destinations[name] } : { message: 'Raccourcis disponibles : agenda, github et traduction.' }
     }
     default: return { message: 'Commande inconnue. ' + help }

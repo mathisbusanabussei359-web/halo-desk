@@ -21,7 +21,9 @@ button:focus-visible, input:focus-visible, #messages:focus-visible { outline: 2p
   border: 1px solid var(--edge);
   border-radius: 18px;
   overflow: hidden;
+  transition: opacity 200ms ease, transform 200ms ease;
 }
+#island.fullscreen-hidden { opacity: 0; transform: translateY(-18px) scale(.97); pointer-events: none; }
 #toggle {
   width: 100%;
   min-height: 50px;
@@ -44,6 +46,18 @@ button:focus-visible, input:focus-visible, #messages:focus-visible { outline: 2p
   transition: transform 180ms ease-out, filter 240ms ease-out;
 }
 .avatar { margin-left: -5px; }
+.mascot-frame { position: relative; flex: none; }
+.sleep-mark {
+  display: none;
+  position: absolute;
+  right: -5px;
+  top: 2px;
+  color: var(--mint);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  text-shadow: 0 1px 4px #111c21;
+}
 .bot-card {
   display: flex;
   align-items: center;
@@ -58,7 +72,8 @@ button:focus-visible, input:focus-visible, #messages:focus-visible { outline: 2p
 #mood { margin-top: 3px; color: var(--muted); }
 [data-look=left] .mascot { transform: rotate(-7deg) translateX(-2px); }
 [data-look=right] .mascot { transform: rotate(7deg) translateX(2px); }
-[data-mood=sleep] .mascot { animation: breathe 3s ease-in-out infinite; filter: brightness(.72); }
+[data-mood=sleep] .mascot { animation: doze 2.8s ease-in-out infinite; transform: rotate(-12deg) translateY(2px); filter: brightness(.7); }
+[data-mood=sleep] .sleep-mark { display: block; animation: dream 2.8s ease-out infinite; }
 [data-mood=focus] .mascot { animation: breathe 2s ease-in-out infinite; filter: drop-shadow(0 0 7px #81fcce80); }
 [data-mood=typing] .mascot, [data-mood=thinking] .mascot { animation: nod .75s ease-in-out infinite; }
 [data-mood=wave] .mascot { animation: wave .65s ease-in-out 2; }
@@ -66,6 +81,8 @@ button:focus-visible, input:focus-visible, #messages:focus-visible { outline: 2p
 [data-mood=celebrate] .mascot { animation-iteration-count: 3; filter: drop-shadow(0 0 8px #d5fa81); }
 [data-mood=error] .mascot { animation: wave .4s ease-in-out; }
 @keyframes breathe { 50% { transform: translateY(-2px) scale(.96); } }
+@keyframes doze { 50% { transform: rotate(-15deg) translateY(3px) scale(.94); } }
+@keyframes dream { from { opacity: .4; transform: translate(0, 4px); } to { opacity: 1; transform: translate(3px, -4px); } }
 @keyframes nod { 50% { transform: rotate(-8deg) translateY(1px); } }
 @keyframes wave { 30% { transform: rotate(-13deg); } 70% { transform: rotate(13deg); } }
 @keyframes hop { 40% { transform: translateY(-6px) rotate(-7deg); } 65% { transform: translateY(1px) scaleY(.92); } }

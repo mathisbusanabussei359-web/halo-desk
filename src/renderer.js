@@ -13,7 +13,7 @@ let reactionTimeout
 let typingTimeout
 
 function renderMood() {
-  const mode = reaction || (busy ? 'thinking' : state.timer?.end ? 'focus' : idle ? 'sleep' : 'ready')
+  const mode = reaction || (busy ? 'thinking' : idle ? 'sleep' : state.timer?.end ? 'focus' : 'ready')
   if (island.dataset.mood === mode) return
   island.dataset.mood = mode
   byId('mood').textContent = {
@@ -202,6 +202,7 @@ renderTasks()
 renderClock()
 renderMood()
 window.halo.onState(update)
+window.halo.onFullscreen(value => { island.classList.toggle('fullscreen-hidden', value) })
 window.halo.onFinished(label => {
   finishedUntil = Date.now() + 15000
   renderClock()
@@ -223,4 +224,4 @@ setInterval(async () => {
   } catch {
     // Certains environnements de bureau ne fournissent pas l’inactivité système.
   }
-}, 2500)
+}, 300)

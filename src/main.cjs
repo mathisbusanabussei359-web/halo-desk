@@ -2,6 +2,7 @@ const { app, BrowserWindow, Menu, Tray, Notification, clipboard, globalShortcut,
 const fs = require('node:fs')
 const path = require('node:path')
 const { runCommand } = require('./bot.cjs')
+const { watchFullscreen } = require('./fullscreen.cjs')
 
 let window
 let tray
@@ -9,6 +10,12 @@ let alarm
 let expanded = false
 let quitting = false
 let shortcut = false
+let manuallyHidden = false
+let fullscreen = false
+let hideDelay
+let stopFullscreen
+let lastMouse
+let lastMotion = performance.now()
 let state = { notes: [], tasks: [], timer: null }
 
 const file = () => path.join(app.getPath('userData'), 'halo.json')
@@ -69,11 +76,42 @@ function layout() {
 }
 
 function toggleVisibility() {
-  if (window.isVisible()) window.hide()
-  else {
+  setManuallyHidden(!manuallyHidden)
+}
+
+function setManuallyHidden(value) {
+  manuallyHidden = value
+  if (value) window.hide()
+  else if (!fullscreen) {
     layout()
     window.show()
   }
+}
+
+function updateFullscreen(value) {
+  if (quitting || fullscreen === value) return
+  fullscreen = value
+  clearTimeout(hideDelay)
+  window.webContents.send('halo:fullscreen', value)
+  if (value && window.isVisible()) {
+    hideDelay = setTimeout(() => window.hide(), 220)
+  } else if (!value && !manuallyHidden) {
+    layout()
+    window.showInactive()
+  }
+}
+
+function mouseIdle() {
+  if (process.platform === 'linux' && process.env.XDG_SESSION_TYPE === 'wayland' &&
+      app.commandLine.getSwitchValue('ozone-platform') !== 'x11') {
+    return powerMonitor.getSystemIdleTime() >= 30
+  }
+  const point = screen.getCursorScreenPoint()
+  if (!lastMouse || lastMouse.x !== point.x || lastMouse.y !== point.y) {
+    lastMouse = point
+    lastMotion = performance.now()
+  }
+  return performance.now() - lastMotion >= 30000
 }
 
 function guard(channel, callback) {
@@ -103,7 +141,7 @@ function start() {
   window.on('close', event => {
     if (!quitting) {
       event.preventDefault()
-      window.hide()
+      setManuallyHidden(true)
     }
   })
   screen.on('display-metrics-changed', layout)
@@ -111,12 +149,12 @@ function start() {
   screen.on('display-removed', layout)
 
   guard('halo:get', () => ({ state, shortcut }))
-  guard('halo:idle', () => powerMonitor.getSystemIdleTime() >= 120)
+  guard('halo:idle', mouseIdle)
   guard('halo:expand', value => {
     expanded = value === true
     layout()
   })
-  guard('halo:hide', () => window.hide())
+  guard('halo:hide', () => setManuallyHidden(true))
   guard('halo:quit', () => app.quit())
   guard('halo:remove', id => {
     save({ notes: state.notes.filter(note => note.id !== id) })
@@ -157,6 +195,7 @@ function start() {
     layout()
     window.showInactive()
     schedule()
+    stopFullscreen = watchFullscreen(updateFullscreen, () => screen.getPrimaryDisplay().bounds)
   })
   window.loadFile(path.join(__dirname, 'index.html'))
   powerMonitor.on('resume', schedule)
@@ -165,10 +204,14 @@ function start() {
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
-  app.on('second-instance', () => window?.show())
-  app.on('activate', () => window?.show())
+  app.on('second-instance', () => { if (window) setManuallyHidden(false) })
+  app.on('activate', () => { if (window) setManuallyHidden(false) })
   app.on('before-quit', () => { quitting = true })
-  app.on('will-quit', () => globalShortcut.unregisterAll())
+  app.on('will-quit', () => {
+    stopFullscreen?.()
+    clearTimeout(hideDelay)
+    globalShortcut.unregisterAll()
+  })
   app.whenReady().then(start).catch(error => {
     console.error(error)
     app.quit()

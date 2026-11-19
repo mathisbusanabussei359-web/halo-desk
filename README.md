@@ -29,7 +29,11 @@ npm start
 
 Clique sur la capsule pour la déplier. **Échap** la replie. **Ctrl + Maj + Espace** sur Windows et Linux, ou **⌘ + Maj + Espace** sur macOS, alterne l’affichage et le masquage. Si la combinaison est déjà prise, utilise l’icône de la barre système. L’onglet **Notes** permet de retrouver et de supprimer les notes.
 
-Halo s’incline vers le pointeur dans la capsule, réagit à la saisie, se concentre avec toi et fête la fin d’un minuteur ou d’une tâche. Au bout de deux minutes d’inactivité système, il s’assoupit et te salue au retour. Pour cette réaction, Halo Desk lit seulement la durée d’inactivité fournie par le système. Il ne capture ni l’écran ni les frappes dans les autres apps. L’option système de réduction des animations est respectée.
+Halo s’incline vers le pointeur dans la capsule, réagit à la saisie, se concentre avec toi et fête la fin d’un minuteur ou d’une tâche. Au bout de **30 secondes sans mouvement de souris**, il s’assoupit et des « Z z » apparaissent. Bouge le pointeur pour le réveiller. L’option système de réduction des animations est respectée.
+
+Lorsqu’une autre fenêtre passe en plein écran, Halo Desk glisse vers le haut et se masque. La capsule revient quand tu quittes le plein écran. Si tu l’avais masquée toi-même, elle reste masquée. Le minuteur continue pendant ce temps.
+
+Halo Desk consulte la position du pointeur et des informations sur la fenêtre active. Il ne capture ni l’écran ni les frappes dans les autres apps. La détection du plein écran utilise les dimensions de la fenêtre active sur macOS et Windows, et son état sur Linux avec X11 et `xprop`. Sous Wayland natif, le plein écran des fenêtres Wayland n’est pas détecté et le sommeil utilise l’inactivité signalée par le système.
 
 | Commande | Action |
 | --- | --- |
@@ -47,6 +51,8 @@ Halo s’incline vers le pointeur dans la capsule, réagit à la saisie, se conc
 | `dé 20`, `pile ou face` | Lance un dé ou tire à pile ou face |
 | `ouvrir agenda`, `ouvrir github`, `ouvrir traduction` | Ouvre Google Agenda, GitHub ou DeepL |
 | `aide` | Liste les exemples |
+
+Les formulations courtes et naturelles utilisent les mêmes commandes. `minuteur 5m`, `minuteur 5 minutes` et `lance un minuteur de 5 minutes` donnent la même durée. Tu peux aussi écrire `mets le minuteur en pause`, `montre-moi mes notes`, `ajoute une tâche : Envoyer le dossier` ou `quelle heure est-il ?`.
 
 La capsule suit un minuteur à la fois. Les notes, les tâches et le minuteur restent sur ton ordinateur. L’appli peut notifier la fin d’un minuteur tant qu’elle tourne, même masquée. Si elle a été quittée, elle signale une échéance dépassée à sa prochaine ouverture.
 

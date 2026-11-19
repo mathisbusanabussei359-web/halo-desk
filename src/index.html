@@ -11,14 +11,20 @@
 <body>
   <main id="island">
     <button id="toggle" type="button" aria-expanded="false" aria-controls="panel">
-      <img class="mascot avatar" src="halo-bot.webp" alt="" width="42" height="42" draggable="false">
+      <span class="mascot-frame">
+        <img class="mascot avatar" src="halo-bot.webp" alt="" width="42" height="42" draggable="false">
+        <span class="sleep-mark" aria-hidden="true">Z z</span>
+      </span>
       <span id="title">Halo Desk</span>
       <span id="clock"></span>
       <span id="chevron" aria-hidden="true">⌄</span>
     </button>
     <div id="panel" hidden>
       <div class="bot-card">
-        <img class="mascot" src="halo-bot.webp" alt="Halo, le petit robot" width="70" height="70" draggable="false">
+        <span class="mascot-frame">
+          <img class="mascot" src="halo-bot.webp" alt="Halo, le petit robot" width="70" height="70" draggable="false">
+          <span class="sleep-mark" aria-hidden="true">Z z</span>
+        </span>
         <div>
           <strong>Halo</strong>
           <div id="mood">Prêt à t’aider</div>
