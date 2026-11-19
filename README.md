@@ -1,6 +1,6 @@
 # Halo Desk
 
-Halo Desk est une capsule flottante pour macOS, Windows et Linux. Elle affiche l’heure ou le compte à rebours et se déplie pour laisser place à Halo, un petit robot animé. L’assistant interprète des commandes locales et fonctionne sans clé API ni compte. Seuls les raccourcis web ouvrent un site dans le navigateur.
+Halo Desk est une sorte de Dynamic Island pour macOS, Windows et Linux. Elle affiche l’heure ou le compte à rebours et se déplie pour laisser place à Halo, un petit robot animé. L’assistant interprète des commandes locales et fonctionne sans clé API ni compte. Seuls les raccourcis web ouvrent un site dans le navigateur.
 
 ## Télécharger
 
