@@ -35,13 +35,46 @@ button:focus-visible, input:focus-visible, #messages:focus-visible { outline: 2p
   text-align: left;
 }
 #toggle:focus-visible { outline-offset: -4px; }
-.orb { width: 14px; height: 14px; flex: 0 0 14px; border-radius: 50%; border: 2px solid var(--mint); box-shadow: 0 0 13px #81fcce65; }
-#island.running .orb { background: var(--mint); box-shadow: 0 0 15px #81fcceaa; }
+.mascot {
+  display: block;
+  object-fit: contain;
+  flex: none;
+  filter: drop-shadow(0 3px 7px #0008);
+  transform-origin: center 80%;
+  transition: transform 180ms ease-out, filter 240ms ease-out;
+}
+.avatar { margin-left: -5px; }
+.bot-card {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 13px;
+  padding: 0 12px;
+  border: 1px solid var(--edge);
+  border-radius: 13px;
+  background: radial-gradient(ellipse at 14% 85%, #36574d, #192923 65%);
+}
+.bot-card strong { font-size: 16px; }
+#mood { margin-top: 3px; color: var(--muted); }
+[data-look=left] .mascot { transform: rotate(-7deg) translateX(-2px); }
+[data-look=right] .mascot { transform: rotate(7deg) translateX(2px); }
+[data-mood=sleep] .mascot { animation: breathe 3s ease-in-out infinite; filter: brightness(.72); }
+[data-mood=focus] .mascot { animation: breathe 2s ease-in-out infinite; filter: drop-shadow(0 0 7px #81fcce80); }
+[data-mood=typing] .mascot, [data-mood=thinking] .mascot { animation: nod .75s ease-in-out infinite; }
+[data-mood=wave] .mascot { animation: wave .65s ease-in-out 2; }
+[data-mood=reply] .mascot, [data-mood=celebrate] .mascot { animation: hop .55s ease-out; }
+[data-mood=celebrate] .mascot { animation-iteration-count: 3; filter: drop-shadow(0 0 8px #d5fa81); }
+[data-mood=error] .mascot { animation: wave .4s ease-in-out; }
+@keyframes breathe { 50% { transform: translateY(-2px) scale(.96); } }
+@keyframes nod { 50% { transform: rotate(-8deg) translateY(1px); } }
+@keyframes wave { 30% { transform: rotate(-13deg); } 70% { transform: rotate(13deg); } }
+@keyframes hop { 40% { transform: translateY(-6px) rotate(-7deg); } 65% { transform: translateY(1px) scaleY(.92); } }
+@keyframes enter { from { opacity: 0; transform: translateY(4px); } }
 #title { flex: 1; font-weight: 700; }
 #clock { color: var(--mint); font-variant-numeric: tabular-nums; }
-#chevron { color: var(--muted); font-size: 19px; }
+#chevron { color: var(--muted); font-size: 19px; transition: transform 160ms ease-out; }
 #toggle[aria-expanded=true] #chevron { transform: rotate(180deg); }
-#panel { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 15px 12px; gap: 10px; overflow: auto; }
+#panel { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 15px 12px; gap: 10px; overflow: auto; animation: enter 180ms ease-out; }
 nav, .quick, footer { display: flex; gap: 6px; flex-wrap: wrap; }
 nav { border-top: 1px solid var(--edge); padding-top: 10px; }
 nav button, .quick button, footer button, .note button {
@@ -52,11 +85,12 @@ nav button, .quick button, footer button, .note button {
   color: var(--ink);
 }
 nav button[aria-pressed=true], button:hover { border-color: var(--mint); color: var(--mint); }
-#assistant, #notes { flex: 1; min-height: 75px; }
+#assistant, #notes, #tasks { flex: 1; min-height: 75px; }
 #assistant { display: flex; flex-direction: column; gap: 9px; }
-#messages, #notes { overflow: auto; scrollbar-width: thin; }
+#messages, #notes, #tasks { overflow: auto; scrollbar-width: thin; }
 #messages { flex: 1; padding: 3px 3px 0; }
 #messages p, .note { margin: 0 0 8px; border-radius: 10px; padding: 8px 10px; line-height: 1.4; overflow-wrap: anywhere; white-space: pre-wrap; }
+#messages p { animation: enter 170ms ease-out; }
 .reply, .note { background: #243932; }
 .request { background: #243746; margin-left: 24px !important; }
 .note { display: flex; align-items: start; justify-content: space-between; gap: 9px; }
@@ -77,3 +111,7 @@ nav button[aria-pressed=true], button:hover { border-color: var(--mint); color: 
 footer { align-items: center; color: var(--muted); font-size: 11px; }
 #shortcut { flex: 1; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .mascot { transform: none !important; }
+}

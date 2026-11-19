@@ -9,17 +9,19 @@ let alarm
 let expanded = false
 let quitting = false
 let shortcut = false
-let state = { notes: [], timer: null }
+let state = { notes: [], tasks: [], timer: null }
 
 const file = () => path.join(app.getPath('userData'), 'halo.json')
 
 function loadState() {
   try {
     const saved = JSON.parse(fs.readFileSync(file(), 'utf8'))
-    const notes = Array.isArray(saved.notes) ? saved.notes.filter(note =>
-      typeof note?.id === 'string' && typeof note.text === 'string').slice(0, 100) : []
-    const timer = Number.isFinite(saved.timer?.end) && ['Focus', 'Minuteur'].includes(saved.timer?.label) ? saved.timer : null
-    state = { notes, timer }
+    const entries = list => Array.isArray(list) ? list.filter(entry =>
+      typeof entry?.id === 'string' && typeof entry.text === 'string').slice(0, 100) : []
+    const timer = saved.timer
+    const validTimer = ['Focus', 'Minuteur'].includes(timer?.label) &&
+      (Number.isFinite(timer.end) || (Number.isFinite(timer.remaining) && timer.remaining > 0))
+    state = { notes: entries(saved.notes), tasks: entries(saved.tasks), timer: validTimer ? timer : null }
   } catch (error) {
     if (error.code !== 'ENOENT') console.error('Données locales illisibles', error)
   }
@@ -40,7 +42,7 @@ function publish() {
 
 function schedule() {
   clearTimeout(alarm)
-  if (!state.timer) return
+  if (!state.timer?.end) return
   alarm = setTimeout(() => {
     if (state.timer.end > Date.now()) return schedule()
     const { label } = state.timer
@@ -62,7 +64,7 @@ function schedule() {
 function layout() {
   const { x, y, width, height } = screen.getPrimaryDisplay().workArea
   const w = Math.min(width, expanded ? 414 : 304)
-  const h = Math.min(Math.max(1, height - 18), expanded ? 498 : 58)
+  const h = Math.min(Math.max(1, height - 18), expanded ? 530 : 62)
   window.setBounds({ x: x + Math.round((width - w) / 2), y: y + 9, width: w, height: h })
 }
 
@@ -109,6 +111,7 @@ function start() {
   screen.on('display-removed', layout)
 
   guard('halo:get', () => ({ state, shortcut }))
+  guard('halo:idle', () => powerMonitor.getSystemIdleTime() >= 120)
   guard('halo:expand', value => {
     expanded = value === true
     layout()
@@ -118,6 +121,13 @@ function start() {
   guard('halo:remove', id => {
     save({ notes: state.notes.filter(note => note.id !== id) })
     publish()
+  })
+  guard('halo:complete', id => {
+    const tasks = state.tasks.filter(task => task.id !== id)
+    if (tasks.length === state.tasks.length) return false
+    save({ tasks })
+    publish()
+    return true
   })
   guard('halo:command', async value => {
     if (typeof value !== 'string' || value.length > 1200) return { message: 'Commande trop longue.' }
@@ -129,7 +139,7 @@ function start() {
     }
     if (result.copy) clipboard.writeText(result.copy)
     if (result.url) await shell.openExternal(result.url)
-    return { message: result.message, view: result.view }
+    return { message: result.message, view: result.view, reaction: result.reaction }
   })
 
   const icon = nativeImage.createFromPath(path.join(__dirname, 'icon.png')).resize({ width: 20, height: 20 })

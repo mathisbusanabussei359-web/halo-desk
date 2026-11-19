@@ -36,3 +36,22 @@ test('notes, texte copié et destinations autorisées', () => {
   assert.equal(runCommand('ouvrir file:///tmp/test', empty).url, undefined)
   assert.equal(runCommand('ouvrir __proto__', empty).url, undefined)
 })
+
+test('pause et reprise conservent le temps restant', () => {
+  const state = { ...empty, timer: { end: 65000, label: 'Focus' } }
+  const paused = runCommand('pause', state, 5000).patch
+  assert.deepEqual(paused.timer, { remaining: 60000, label: 'Focus' })
+  assert.equal(runCommand('pause', paused, 6000).patch, undefined)
+  assert.deepEqual(runCommand('reprendre', paused, 90000).patch.timer, { end: 150000, label: 'Focus' })
+  assert.equal(runCommand('pause', state, 65000).patch, undefined)
+})
+
+test('tâches numérotées et commandes de jeu', () => {
+  const first = runCommand('tâche Envoyer le dossier', empty).patch
+  const second = runCommand('tache Lire la réponse', first).patch
+  assert.equal(runCommand('tâches', second).view, 'tasks')
+  assert.equal(runCommand('fait 0', second).patch, undefined)
+  assert.deepEqual(runCommand('fait 1', second).patch.tasks, [second.tasks[1]])
+  assert.match(runCommand('dé 2', empty).message, /faces : [12]\./)
+  assert.match(runCommand('pile ou face', empty).message, /^(Pile|Face) !$/)
+})

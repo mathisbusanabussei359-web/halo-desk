@@ -11,20 +11,29 @@
 <body>
   <main id="island">
     <button id="toggle" type="button" aria-expanded="false" aria-controls="panel">
-      <span class="orb" aria-hidden="true"></span>
+      <img class="mascot avatar" src="halo-bot.webp" alt="" width="42" height="42" draggable="false">
       <span id="title">Halo Desk</span>
       <span id="clock"></span>
       <span id="chevron" aria-hidden="true">⌄</span>
     </button>
     <div id="panel" hidden>
+      <div class="bot-card">
+        <img class="mascot" src="halo-bot.webp" alt="Halo, le petit robot" width="70" height="70" draggable="false">
+        <div>
+          <strong>Halo</strong>
+          <div id="mood">Prêt à t’aider</div>
+        </div>
+      </div>
       <nav aria-label="Vues">
         <button id="assistant-tab" aria-pressed="true">Assistant</button>
         <button id="notes-tab" aria-pressed="false">Notes</button>
+        <button id="tasks-tab" aria-pressed="false">Tâches</button>
       </nav>
       <section id="assistant">
         <div class="quick" aria-label="Actions rapides">
           <button data-command="focus 25m">Focus 25 min</button>
           <button data-command="minuteur 5m">Minuteur 5 min</button>
+          <button data-command="pause" id="pause" hidden>Pause</button>
           <button data-command="annuler" id="cancel" hidden>Annuler</button>
         </div>
         <div id="messages" role="log" aria-label="Conversation" tabindex="0">
@@ -32,6 +41,7 @@
         </div>
       </section>
       <section id="notes" aria-label="Notes enregistrées" hidden></section>
+      <section id="tasks" aria-label="Tâches à faire" hidden></section>
       <form id="command">
         <label for="input" class="sr-only">Commande</label>
         <input id="input" placeholder="Ex. note Appeler Léa" maxlength="1200" autocomplete="off">

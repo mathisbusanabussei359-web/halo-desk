@@ -1,6 +1,6 @@
 # Halo Desk
 
-Halo Desk est une capsule flottante pour macOS, Windows et Linux. Elle affiche l’heure ou le compte à rebours et se déplie pour laisser place à un assistant en français. L’assistant interprète des commandes locales et fonctionne sans clé API ni compte. Seuls les raccourcis web ouvrent un site dans le navigateur.
+Halo Desk est une capsule flottante pour macOS, Windows et Linux. Elle affiche l’heure ou le compte à rebours et se déplie pour laisser place à Halo, un petit robot animé. L’assistant interprète des commandes locales et fonctionne sans clé API ni compte. Seuls les raccourcis web ouvrent un site dans le navigateur.
 
 ## Télécharger
 
@@ -29,19 +29,26 @@ npm start
 
 Clique sur la capsule pour la déplier. **Échap** la replie. **Ctrl + Maj + Espace** sur Windows et Linux, ou **⌘ + Maj + Espace** sur macOS, alterne l’affichage et le masquage. Si la combinaison est déjà prise, utilise l’icône de la barre système. L’onglet **Notes** permet de retrouver et de supprimer les notes.
 
+Halo s’incline vers le pointeur dans la capsule, réagit à la saisie, se concentre avec toi et fête la fin d’un minuteur ou d’une tâche. Au bout de deux minutes d’inactivité système, il s’assoupit et te salue au retour. Pour cette réaction, Halo Desk lit seulement la durée d’inactivité fournie par le système. Il ne capture ni l’écran ni les frappes dans les autres apps. L’option système de réduction des animations est respectée.
+
 | Commande | Action |
 | --- | --- |
 | `focus` ou `focus 30m` | Lance une session de concentration, 25 minutes par défaut |
 | `minuteur 90s`, `minuteur 5m`, `minuteur 1h` | Lance un minuteur de 1 seconde à 24 heures |
 | `annuler` | Arrête le minuteur en cours |
+| `pause`, `reprendre` | Met le minuteur en pause ou repart du temps restant |
+| `date` | Affiche la date et l’heure locales |
 | `note Appeler Léa` | Enregistre une note |
 | `notes` | Ouvre les notes |
+| `tâche Envoyer le dossier` | Ajoute un élément à la liste de tâches |
+| `tâches`, `fait 1` | Affiche la liste ou termine une tâche par son numéro |
 | `calc (12 + 3) * 4` | Calcule une expression arithmétique |
 | `copier Bonjour !` | Copie le texte dans le presse-papiers |
+| `dé 20`, `pile ou face` | Lance un dé ou tire à pile ou face |
 | `ouvrir agenda`, `ouvrir github`, `ouvrir traduction` | Ouvre Google Agenda, GitHub ou DeepL |
 | `aide` | Liste les exemples |
 
-La capsule suit un minuteur à la fois. Les notes et l’échéance du minuteur restent sur ton ordinateur. L’appli peut notifier la fin d’un minuteur tant qu’elle tourne, même masquée. Si elle a été quittée, elle signale une échéance dépassée à sa prochaine ouverture.
+La capsule suit un minuteur à la fois. Les notes, les tâches et le minuteur restent sur ton ordinateur. L’appli peut notifier la fin d’un minuteur tant qu’elle tourne, même masquée. Si elle a été quittée, elle signale une échéance dépassée à sa prochaine ouverture.
 
 ## Construire et publier
 
@@ -57,8 +64,8 @@ cd halo-desk
 Le workflow **Builds de bureau** vérifie le bot et compile des paquets sur les machines GitHub. Les builds de la branche principale sont téléchargeables dans **Actions**. Un tag crée ou actualise une **Release** et y joint les paquets des quatre cibles.
 
 ```sh
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.2.0
+git push origin v1.2.0
 ```
 
 Mets à jour la version dans `package.json` et le lockfile avant de publier un nouveau tag.
