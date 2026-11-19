@@ -1,6 +1,6 @@
 {
   "name": "halo-desk",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Capsule flottante et assistant local pour le bureau",
   "author": "Halo Desk contributors",
   "main": "src/main.cjs",

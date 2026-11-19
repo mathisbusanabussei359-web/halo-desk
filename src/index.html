@@ -3,39 +3,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; media-src halo-audio:; base-uri 'none'; form-action 'none'">
   <title>Halo Desk</title>
   <link rel="stylesheet" href="style.css">
   <script defer src="renderer.js"></script>
+  <script defer src="views.js"></script>
 </head>
 <body>
-  <main id="island">
-    <button id="toggle" type="button" aria-expanded="false" aria-controls="panel">
-      <span class="mascot-frame">
-        <img class="mascot avatar" src="halo-bot.webp" alt="" width="42" height="42" draggable="false">
-        <span class="sleep-mark" aria-hidden="true">Z z</span>
-      </span>
-      <span id="title">Halo Desk</span>
+  <main id="island" data-position="center">
+    <button id="toggle" type="button" aria-label="Ouvrir ou refermer Halo Desk" aria-expanded="false" aria-controls="panel">
       <span id="clock"></span>
+      <span id="title"></span>
       <span id="chevron" aria-hidden="true">⌄</span>
     </button>
     <div id="panel" hidden>
-      <div class="bot-card">
-        <span class="mascot-frame">
-          <img class="mascot" src="halo-bot.webp" alt="Halo, le petit robot" width="70" height="70" draggable="false">
-          <span class="sleep-mark" aria-hidden="true">Z z</span>
-        </span>
-        <div>
-          <strong>Halo</strong>
-          <div id="mood">Prêt à t’aider</div>
-        </div>
-      </div>
       <nav aria-label="Vues">
-        <button id="assistant-tab" aria-pressed="true">Assistant</button>
-        <button id="notes-tab" aria-pressed="false">Notes</button>
-        <button id="tasks-tab" aria-pressed="false">Tâches</button>
+        <button id="assistant-tab" data-view="assistant" aria-pressed="true">Halo</button>
+        <button id="tasks-tab" data-view="tasks" aria-pressed="false">Tâches</button>
+        <button id="notes-tab" data-view="notes" aria-pressed="false">Notes</button>
+        <button id="files-tab" data-view="files" aria-pressed="false">Fichiers</button>
+        <button id="music-tab" data-view="music" aria-pressed="false">Musique</button>
+        <button id="weather-tab" data-view="weather" aria-pressed="false">Météo</button>
+        <button id="settings-tab" data-view="settings" aria-pressed="false">Réglages</button>
       </nav>
-      <section id="assistant">
+      <section id="assistant" class="view" aria-label="Assistant">
+        <div class="bot-card">
+          <span class="mascot-frame">
+            <img class="mascot" src="halo-bot.webp" alt="Halo, le petit robot" width="62" height="62" draggable="false">
+            <span class="sleep-mark" aria-hidden="true">Z z</span>
+          </span>
+          <div>
+            <strong>Halo</strong>
+            <div id="mood">Prêt à t’aider</div>
+          </div>
+        </div>
         <div class="quick" aria-label="Actions rapides">
           <button data-command="focus 25m">Focus 25 min</button>
           <button data-command="minuteur 5m">Minuteur 5 min</button>
@@ -43,16 +44,85 @@
           <button data-command="annuler" id="cancel" hidden>Annuler</button>
         </div>
         <div id="messages" role="log" aria-label="Conversation" tabindex="0">
-          <p class="reply">Salut, je suis Halo. Lance un minuteur, ajoute une note ou tape « aide » pour voir les commandes.</p>
+          <p class="reply">Dis-moi ce que je peux faire. Essaie « lance un minuteur de 5 minutes ».</p>
+        </div>
+        <form id="command" class="entry-form">
+          <label for="input" class="sr-only">Commande</label>
+          <input id="input" placeholder="Écrire à Halo" maxlength="1200" autocomplete="off">
+          <button id="send" type="submit" aria-label="Envoyer">↑</button>
+        </form>
+      </section>
+      <section id="tasks" class="view" aria-label="Tâches à faire" hidden>
+        <form id="task-form" class="entry-form">
+          <label class="sr-only" for="task-input">Nouvelle tâche</label>
+          <input id="task-input" placeholder="Nouvelle tâche" maxlength="160" required>
+          <button type="submit">Ajouter</button>
+        </form>
+        <div id="task-list" class="list"></div>
+      </section>
+      <section id="notes" class="view" aria-label="Notes enregistrées" hidden>
+        <form id="note-form" class="entry-form">
+          <label class="sr-only" for="note-input">Nouvelle note</label>
+          <textarea id="note-input" placeholder="Nouvelle note" maxlength="500" rows="2" required></textarea>
+          <button type="submit">Enregistrer</button>
+        </form>
+        <div id="note-list" class="list"></div>
+      </section>
+      <section id="files" class="view" aria-label="Fichiers épinglés" hidden>
+        <div class="toolbar">
+          <h2>Fichiers épinglés</h2>
+          <button id="add-files" type="button">Épingler…</button>
+        </div>
+        <div id="file-list" class="list"></div>
+      </section>
+      <section id="music" class="view" aria-label="Musique locale" hidden>
+        <div class="toolbar">
+          <h2>Musique locale</h2>
+          <button id="add-tracks" type="button">Ajouter…</button>
+        </div>
+        <div class="player" hidden>
+          <strong id="track-name"></strong>
+          <audio id="audio" controls preload="metadata" aria-label="Lecteur audio"></audio>
+          <div class="quick">
+            <button id="previous-track" type="button">Précédent</button>
+            <button id="next-track" type="button">Suivant</button>
+          </div>
+        </div>
+        <div id="track-list" class="list"></div>
+      </section>
+      <section id="weather" class="view" aria-label="Météo" hidden>
+        <form id="weather-form" class="entry-form">
+          <label for="city-input" class="sr-only">Ville</label>
+          <input id="city-input" placeholder="Chercher une ville" maxlength="100" required>
+          <button type="submit">Chercher</button>
+        </form>
+        <div id="places" class="list"></div>
+        <p id="weather-status" class="muted" role="status"></p>
+        <div id="forecast" hidden>
+          <div class="toolbar">
+            <h2 id="weather-place"></h2>
+            <button id="refresh-weather" type="button">Actualiser</button>
+          </div>
+          <div class="weather-now">
+            <strong id="temperature"></strong>
+            <span id="conditions"></span>
+          </div>
+          <div id="weather-days" class="list"></div>
+        </div>
+        <small class="muted">Données météo fournies par Open-Meteo.</small>
+      </section>
+      <section id="settings" class="view" aria-label="Réglages" hidden>
+        <h2>Apparence et comportement</h2>
+        <div class="settings-list">
+          <label>Afficher l’heure en mode compact <input type="checkbox" data-setting="clock"></label>
+          <label>Animations <input type="checkbox" data-setting="motion"></label>
+          <label>Masquer en plein écran <input type="checkbox" data-setting="fullscreen"></label>
+          <label>Sommeil de Halo après 30 s <input type="checkbox" data-setting="sleep"></label>
+          <label>Notifications de minuteur <input type="checkbox" data-setting="notifications"></label>
+          <label><span id="position-label">Position</span> <select aria-labelledby="position-label" data-setting="position"><option value="left">Gauche</option><option value="center">Centre</option><option value="right">Droite</option></select></label>
         </div>
       </section>
-      <section id="notes" aria-label="Notes enregistrées" hidden></section>
-      <section id="tasks" aria-label="Tâches à faire" hidden></section>
-      <form id="command">
-        <label for="input" class="sr-only">Commande</label>
-        <input id="input" placeholder="Ex. note Appeler Léa" maxlength="1200" autocomplete="off">
-        <button id="send" type="submit" aria-label="Envoyer">↑</button>
-      </form>
+      <p id="feedback" class="muted" role="status" hidden></p>
       <footer>
         <span id="shortcut"></span>
         <button id="hide" type="button">Masquer</button>

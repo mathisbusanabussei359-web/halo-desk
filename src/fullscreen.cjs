@@ -61,12 +61,14 @@ function watchFullscreen(onChange, getDisplay) {
       windowsHide: true, stdio: ['ignore', 'pipe', 'ignore']
     })
     const lines = require('node:readline').createInterface({ input: child.stdout })
+    let stopped = false
     lines.on('line', line => {
-      if (/^(true|false)$/i.test(line.trim())) onChange(/^true$/i.test(line.trim()))
+      if (!stopped && /^(true|false)$/i.test(line.trim())) onChange(/^true$/i.test(line.trim()))
     })
-    child.on('error', () => onChange(false))
-    child.on('close', () => onChange(false))
-    return () => { lines.close(); child.kill() }
+    const unavailable = () => { if (!stopped) onChange(false) }
+    child.on('error', unavailable)
+    child.on('close', unavailable)
+    return () => { stopped = true; lines.close(); child.kill() }
   }
 
   if (process.platform !== 'darwin' && (process.platform !== 'linux' || !process.env.DISPLAY)) return () => {}

@@ -1,8 +1,12 @@
-const { app, BrowserWindow, Menu, Tray, Notification, clipboard, globalShortcut, ipcMain, nativeImage, screen, shell, powerMonitor } = require('electron')
+const { app, BrowserWindow, Menu, Tray, Notification, clipboard, globalShortcut, ipcMain, nativeImage, screen, shell, powerMonitor, dialog, protocol, net } = require('electron')
 const fs = require('node:fs')
 const path = require('node:path')
+const { randomUUID } = require('node:crypto')
 const { runCommand } = require('./bot.cjs')
 const { watchFullscreen } = require('./fullscreen.cjs')
+const { readSettings, validSetting, audioTypes, mediaType, serveAudio, searchPlaces, forecast, validPlace } = require('./dashboard.cjs')
+
+protocol.registerSchemesAsPrivileged([{ scheme: 'halo-audio', privileges: { standard: true, secure: true, stream: true } }])
 
 let window
 let tray
@@ -16,7 +20,7 @@ let hideDelay
 let stopFullscreen
 let lastMouse
 let lastMotion = performance.now()
-let state = { notes: [], tasks: [], timer: null }
+let state = { notes: [], tasks: [], files: [], tracks: [], timer: null, settings: readSettings(), place: null }
 
 const file = () => path.join(app.getPath('userData'), 'halo.json')
 
@@ -25,10 +29,16 @@ function loadState() {
     const saved = JSON.parse(fs.readFileSync(file(), 'utf8'))
     const entries = list => Array.isArray(list) ? list.filter(entry =>
       typeof entry?.id === 'string' && typeof entry.text === 'string').slice(0, 100) : []
+    const paths = list => Array.isArray(list) ? list.filter(entry => typeof entry?.id === 'string' &&
+      typeof entry.path === 'string' && path.isAbsolute(entry.path)).slice(0, 100) : []
     const timer = saved.timer
     const validTimer = ['Focus', 'Minuteur'].includes(timer?.label) &&
       (Number.isFinite(timer.end) || (Number.isFinite(timer.remaining) && timer.remaining > 0))
-    state = { notes: entries(saved.notes), tasks: entries(saved.tasks), timer: validTimer ? timer : null }
+    state = {
+      notes: entries(saved.notes), tasks: entries(saved.tasks), timer: validTimer ? timer : null,
+      files: paths(saved.files), tracks: paths(saved.tracks).filter(entry => mediaType(entry.path)),
+      settings: readSettings(saved.settings), place: validPlace(saved.place) ? saved.place : null
+    }
   } catch (error) {
     if (error.code !== 'ENOENT') console.error('Données locales illisibles', error)
   }
@@ -61,7 +71,7 @@ function schedule() {
       return
     }
     publish()
-    if (Notification.isSupported()) {
+    if (state.settings.notifications && Notification.isSupported()) {
       new Notification({ title: 'Halo Desk', body: label + ' terminé.' }).show()
     }
     window?.webContents.send('halo:finished', label)
@@ -70,9 +80,11 @@ function schedule() {
 
 function layout() {
   const { x, y, width, height } = screen.getPrimaryDisplay().workArea
-  const w = Math.min(width, expanded ? 414 : 304)
-  const h = Math.min(Math.max(1, height - 18), expanded ? 530 : 62)
-  window.setBounds({ x: x + Math.round((width - w) / 2), y: y + 9, width: w, height: h })
+  const w = Math.min(width, expanded ? 520 : 156)
+  const h = Math.min(Math.max(1, height - 18), expanded ? 574 : 42)
+  const edge = Math.max(0, Math.min(14, width - w))
+  const offset = { left: edge, center: Math.round((width - w) / 2), right: width - w - edge }
+  window.setBounds({ x: x + offset[state.settings.position], y: y + 9, width: w, height: h })
 }
 
 function toggleVisibility() {
@@ -94,7 +106,7 @@ function updateFullscreen(value) {
   clearTimeout(hideDelay)
   window.webContents.send('halo:fullscreen', value)
   if (value && window.isVisible()) {
-    hideDelay = setTimeout(() => window.hide(), 220)
+    hideDelay = setTimeout(() => window.hide(), state.settings.motion ? 220 : 0)
   } else if (!value && !manuallyHidden) {
     layout()
     window.showInactive()
@@ -102,6 +114,7 @@ function updateFullscreen(value) {
 }
 
 function mouseIdle() {
+  if (!state.settings.sleep) return false
   if (process.platform === 'linux' && process.env.XDG_SESSION_TYPE === 'wayland' &&
       app.commandLine.getSwitchValue('ozone-platform') !== 'x11') {
     return powerMonitor.getSystemIdleTime() >= 30
@@ -114,6 +127,27 @@ function mouseIdle() {
   return performance.now() - lastMotion >= 30000
 }
 
+function syncFullscreen() {
+  stopFullscreen?.()
+  stopFullscreen = state.settings.fullscreen ? watchFullscreen(updateFullscreen, () => screen.getPrimaryDisplay().bounds) : undefined
+  if (!state.settings.fullscreen) updateFullscreen(false)
+}
+
+async function addPaths(kind) {
+  const tracks = kind === 'tracks'
+  const options = { title: tracks ? 'Ajouter de la musique' : 'Épingler des fichiers', properties: ['openFile', 'multiSelections'] }
+  if (tracks) options.filters = [{ name: 'Audio', extensions: Object.keys(audioTypes).map(ext => ext.slice(1)) }]
+  const { filePaths } = await dialog.showOpenDialog(window, options)
+  const current = state[kind]
+  const selected = [...new Set(filePaths)].filter(file =>
+    path.isAbsolute(file) && (!tracks || mediaType(file)) && !current.some(item => item.path === file))
+  if (!selected.length || current.length >= 100) return 0
+  const added = selected.slice(0, 100 - current.length).map(file => ({ id: randomUUID(), path: file }))
+  save({ [kind]: [...current, ...added] })
+  publish()
+  return added.length
+}
+
 function guard(channel, callback) {
   ipcMain.handle(channel, (event, ...args) => {
     if (event.sender !== window?.webContents || event.senderFrame !== event.sender.mainFrame) throw new Error('Accès refusé.')
@@ -124,6 +158,7 @@ function guard(channel, callback) {
 function start() {
   app.setAppUserModelId('io.halodesk.desktop')
   loadState()
+  protocol.handle('halo-audio', request => serveAudio(request, state.tracks))
   window = new BrowserWindow({
     title: 'Halo Desk',
     show: false,
@@ -155,6 +190,41 @@ function start() {
     layout()
   })
   guard('halo:hide', () => setManuallyHidden(true))
+  guard('halo:setting', (key, value) => {
+    if (!validSetting(key, value)) throw new Error('Réglage invalide.')
+    if (state.settings[key] === value) return
+    save({ settings: { ...state.settings, [key]: value } })
+    if (key === 'position') layout()
+    if (key === 'fullscreen') syncFullscreen()
+    if (key === 'sleep') lastMotion = performance.now()
+    publish()
+  })
+  guard('halo:add-files', audio => addPaths(audio === true ? 'tracks' : 'files'))
+  guard('halo:remove-file', (id, audio) => {
+    const key = audio === true ? 'tracks' : 'files'
+    save({ [key]: state[key].filter(entry => entry.id !== id) })
+    publish()
+  })
+  guard('halo:reveal-file', async id => {
+    const entry = state.files.find(file => file.id === id)
+    if (!entry) throw new Error('Fichier introuvable.')
+    await fs.promises.access(entry.path)
+    shell.showItemInFolder(entry.path)
+  })
+  guard('halo:places', query => {
+    if (typeof query !== 'string' || query.trim().length < 2 || query.length > 100) return []
+    return searchPlaces(query.trim(), net.fetch)
+  })
+  guard('halo:weather', async place => {
+    if (!validPlace(place)) throw new Error('Ville invalide.')
+    const result = await forecast(place, net.fetch)
+    const selected = { label: place.label, lat: place.lat, lon: place.lon }
+    if (JSON.stringify(state.place) !== JSON.stringify(selected)) {
+      save({ place: selected })
+      publish()
+    }
+    return result
+  })
   guard('halo:quit', () => app.quit())
   guard('halo:remove', id => {
     save({ notes: state.notes.filter(note => note.id !== id) })
@@ -195,7 +265,7 @@ function start() {
     layout()
     window.showInactive()
     schedule()
-    stopFullscreen = watchFullscreen(updateFullscreen, () => screen.getPrimaryDisplay().bounds)
+    syncFullscreen()
   })
   window.loadFile(path.join(__dirname, 'index.html'))
   powerMonitor.on('resume', schedule)

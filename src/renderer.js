@@ -4,13 +4,16 @@ const panel = byId('panel')
 const input = byId('input')
 const messages = byId('messages')
 const island = byId('island')
-let state = { timer: null, notes: [], tasks: [] }
+let state = { timer: null, notes: [], tasks: [], files: [], tracks: [], settings: {}, place: null }
 let busy = false
 let finishedUntil = 0
 let idle = false
 let reaction = ''
 let reactionTimeout
 let typingTimeout
+let transitioning = false
+const clockFormat = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' })
+const tabs = [...document.querySelectorAll('[data-view]')]
 
 function renderMood() {
   const mode = reaction || (busy ? 'thinking' : idle ? 'sleep' : state.timer?.end ? 'focus' : 'ready')
@@ -43,24 +46,43 @@ function log(message, type = 'reply') {
 }
 
 function show(view) {
-  for (const name of ['assistant', 'notes', 'tasks']) {
-    byId(name).hidden = name !== view
-    byId(name + '-tab').setAttribute('aria-pressed', String(name === view))
+  for (const tab of tabs) {
+    const active = tab.dataset.view === view
+    byId(tab.dataset.view).hidden = !active
+    tab.setAttribute('aria-pressed', String(active))
   }
   if (view === 'assistant') messages.scrollTop = messages.scrollHeight
+  if (view === 'weather') openWeather()
 }
 
 async function expand(value) {
-  if (!value) {
-    panel.hidden = true
-    toggle.focus()
-  }
-  toggle.setAttribute('aria-expanded', String(value))
-  await window.halo.expand(value)
-  if (value && toggle.getAttribute('aria-expanded') === 'true') {
-    panel.hidden = false
-    input.focus()
-    react('wave')
+  if (transitioning) return
+  transitioning = true
+  const motion = state.settings.motion !== false && !matchMedia('(prefers-reduced-motion: reduce)').matches
+  try {
+    if (value) {
+      island.toggleAttribute('data-open', true)
+      if (motion) island.classList.add('opening')
+      await window.halo.expand(true)
+      panel.hidden = false
+      toggle.setAttribute('aria-expanded', 'true')
+      if (!byId('assistant').hidden) input.focus()
+      react('wave')
+      if (motion) await new Promise(resolve => setTimeout(resolve, 290))
+    } else {
+      if (motion) {
+        island.classList.add('closing')
+        await new Promise(resolve => setTimeout(resolve, 210))
+      }
+      panel.hidden = true
+      island.removeAttribute('data-open')
+      toggle.setAttribute('aria-expanded', 'false')
+      toggle.focus()
+      await window.halo.expand(false)
+    }
+  } finally {
+    island.classList.remove('opening', 'closing')
+    transitioning = false
   }
 }
 
@@ -71,19 +93,22 @@ function renderClock() {
   pause.hidden = !state.timer
   pause.dataset.command = state.timer?.remaining ? 'reprendre' : 'pause'
   pause.textContent = state.timer?.remaining ? 'Reprendre' : 'Pause'
-  byId('title').textContent = state.timer?.remaining ? 'En pause' : state.timer?.label ?? (Date.now() < finishedUntil ? 'Temps écoulé' : 'Halo Desk')
+  let title = state.timer?.remaining ? 'En pause' : state.timer?.label ?? (Date.now() < finishedUntil ? 'Temps écoulé' : 'Halo Desk')
+  byId('clock').textContent = state.settings.clock === false ? '' : clockFormat.format(new Date())
   if (remaining === null) {
-    byId('clock').textContent = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date())
+    byId('title').textContent = title
     return
   }
   const hours = Math.floor(remaining / 3600)
   const minutes = Math.floor(remaining / 60) % 60
   const seconds = remaining % 60
   const parts = hours ? [hours, minutes, seconds] : [minutes, seconds]
-  byId('clock').textContent = parts.map(part => String(part).padStart(2, '0')).join(':')
+  title += ' · ' + parts.map(part => String(part).padStart(2, '0')).join(':')
+  byId('title').textContent = title
 }
 
 function update(next) {
+  const previous = state
   const notesChanged = JSON.stringify(state.notes) !== JSON.stringify(next.notes)
   const tasksChanged = JSON.stringify(state.tasks) !== JSON.stringify(next.tasks)
   state = next
@@ -91,10 +116,11 @@ function update(next) {
   renderMood()
   if (notesChanged) renderNotes()
   if (tasksChanged) renderTasks()
+  updateViews(previous)
 }
 
 function renderNotes() {
-  const container = byId('notes')
+  const container = byId('note-list')
   container.replaceChildren()
   if (!state.notes.length) container.textContent = 'Aucune note enregistrée.'
   for (const note of state.notes) {
@@ -120,7 +146,7 @@ function renderNotes() {
 }
 
 function renderTasks() {
-  const container = byId('tasks')
+  const container = byId('task-list')
   container.replaceChildren()
   if (!state.tasks.length) container.textContent = 'Aucune tâche. Essaie « tâche Envoyer le dossier ».'
   for (const [index, task] of state.tasks.entries()) {
@@ -171,9 +197,7 @@ toggle.addEventListener('click', () => expand(panel.hidden))
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && !panel.hidden) expand(false)
 })
-byId('assistant-tab').addEventListener('click', () => show('assistant'))
-byId('notes-tab').addEventListener('click', () => show('notes'))
-byId('tasks-tab').addEventListener('click', () => show('tasks'))
+for (const tab of tabs) tab.addEventListener('click', () => show(tab.dataset.view))
 input.addEventListener('input', () => {
   clearTimeout(typingTimeout)
   typingTimeout = setTimeout(() => { if (input.value.trim() && !busy) react('typing', 900) }, 80)
@@ -201,17 +225,19 @@ renderNotes()
 renderTasks()
 renderClock()
 renderMood()
-window.halo.onState(update)
-window.halo.onFullscreen(value => { island.classList.toggle('fullscreen-hidden', value) })
-window.halo.onFinished(label => {
-  finishedUntil = Date.now() + 15000
-  renderClock()
-  log(label + ' terminé.')
-  react('celebrate', 4000)
-})
-window.halo.get().then(result => {
-  update(result.state)
-  byId('shortcut').textContent = result.shortcut ? 'Ctrl/⌘ + Maj + Espace' : 'Raccourci indisponible'
+document.addEventListener('DOMContentLoaded', () => {
+  window.halo.onState(update)
+  window.halo.onFullscreen(value => { island.classList.toggle('fullscreen-hidden', value) })
+  window.halo.onFinished(label => {
+    finishedUntil = Date.now() + 15000
+    renderClock()
+    log(label + ' terminé.')
+    react('celebrate', 4000)
+  })
+  window.halo.get().then(result => {
+    update(result.state)
+    byId('shortcut').textContent = result.shortcut ? 'Ctrl/⌘ + Maj + Espace' : 'Raccourci indisponible'
+  })
 })
 setInterval(renderClock, 250)
 setInterval(async () => {

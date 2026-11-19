@@ -27,9 +27,21 @@ npm test
 npm start
 ```
 
-Clique sur la capsule pour la déplier. **Échap** la replie. **Ctrl + Maj + Espace** sur Windows et Linux, ou **⌘ + Maj + Espace** sur macOS, alterne l’affichage et le masquage. Si la combinaison est déjà prise, utilise l’icône de la barre système. L’onglet **Notes** permet de retrouver et de supprimer les notes.
+La capsule noire affiche l’heure en mode compact. Clique dessus pour la déplier. **Échap** la replie. **Ctrl + Maj + Espace** sur Windows et Linux, ou **⌘ + Maj + Espace** sur macOS, alterne l’affichage et le masquage. Si la combinaison est déjà prise, utilise l’icône de la barre système.
 
-Halo s’incline vers le pointeur dans la capsule, réagit à la saisie, se concentre avec toi et fête la fin d’un minuteur ou d’une tâche. Au bout de **30 secondes sans mouvement de souris**, il s’assoupit et des « Z z » apparaissent. Bouge le pointeur pour le réveiller. L’option système de réduction des animations est respectée.
+| Vue | Fonction |
+| --- | --- |
+| **Halo** | Assistant, minuteur et mode Focus |
+| **Tâches** | Ajouter et terminer des tâches |
+| **Notes** | Écrire et retrouver des notes |
+| **Fichiers** | Épingler des fichiers et les retrouver dans leur dossier |
+| **Musique** | Lire des morceaux locaux et passer de l’un à l’autre |
+| **Météo** | Choisir une ville, voir la température, le ressenti et les prévisions sur trois jours |
+| **Réglages** | Afficher ou masquer l’heure, changer la position et régler les animations, le plein écran, le sommeil et les notifications |
+
+Les réglages et les listes sont sauvegardés sur l’ordinateur. Épingler ou retirer un fichier ne le déplace pas et ne le supprime pas. La musique est lue depuis les fichiers sélectionnés. Les formats disponibles dépendent des codecs pris en charge. La météo utilise [Open-Meteo](https://open-meteo.com/), avec une connexion Internet. Le nom recherché et les coordonnées de la ville sont envoyés au service météo. Halo Desk ne demande pas la géolocalisation.
+
+Dans la vue **Halo**, le robot s’incline vers le pointeur, réagit à la saisie, se concentre avec toi et fête la fin d’un minuteur ou d’une tâche. Au bout de **30 secondes sans mouvement de souris**, il s’assoupit et des « Z z » apparaissent. Bouge le pointeur pour le réveiller. L’option système de réduction des animations est respectée.
 
 Lorsqu’une autre fenêtre passe en plein écran, Halo Desk glisse vers le haut et se masque. La capsule revient quand tu quittes le plein écran. Si tu l’avais masquée toi-même, elle reste masquée. Le minuteur continue pendant ce temps.
 
@@ -70,8 +82,8 @@ cd halo-desk
 Le workflow **Builds de bureau** vérifie le bot et compile des paquets sur les machines GitHub. Les builds de la branche principale sont téléchargeables dans **Actions**. Un tag crée ou actualise une **Release** et y joint les paquets des quatre cibles.
 
 ```sh
-git tag v1.2.0
-git push origin v1.2.0
+git tag v1.3.0
+git push origin v1.3.0
 ```
 
 Mets à jour la version dans `package.json` et le lockfile avant de publier un nouveau tag.
