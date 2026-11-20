@@ -1,6 +1,6 @@
 # Halo Desk
 
-Halo Desk est une sorte de Dynamic Island pour macOS, Windows et Linux. Elle affiche l’heure ou le compte à rebours et se déplie pour laisser place à Halo, un petit robot animé. L’assistant interprète des commandes locales et fonctionne sans clé API ni compte. Seuls les raccourcis web ouvrent un site dans le navigateur.
+Halo Desk est une sorte de Dynamic Island pour macOS, Windows et Linux. La capsule affiche l’heure en mode compact et se déplie pour laisser place à Halo, un petit robot animé. L’application native est écrite en Rust avec egui. L’assistant interprète des commandes locales et fonctionne sans clé API ni compte.
 
 ## Télécharger
 
@@ -19,12 +19,17 @@ Les builds macOS sont signés localement sans certificat Developer ID ni notaris
 
 ## Démarrer depuis le code source
 
-Installe [Node.js 24 LTS](https://nodejs.org/), puis ouvre un terminal dans ce dossier.
+Installe [Rust stable via rustup](https://rustup.rs/). Sur Debian ou Ubuntu, installe aussi les dépendances de compilation.
 
 ```sh
-npm ci
-npm test
-npm start
+sudo apt install build-essential pkg-config libasound2-dev libx11-dev libxkbcommon-dev libgl1-mesa-dev
+```
+
+Sur les trois systèmes, depuis le dossier du projet.
+
+```sh
+cargo test --locked
+cargo run --locked
 ```
 
 La capsule noire affiche l’heure en mode compact. Clique dessus pour la déplier. **Échap** la replie. **Ctrl + Maj + Espace** sur Windows et Linux, ou **⌘ + Maj + Espace** sur macOS, alterne l’affichage et le masquage. Si la combinaison est déjà prise, utilise l’icône de la barre système.
@@ -41,11 +46,11 @@ La capsule noire affiche l’heure en mode compact. Clique dessus pour la dépli
 
 Les réglages et les listes sont sauvegardés sur l’ordinateur. Épingler ou retirer un fichier ne le déplace pas et ne le supprime pas. La musique est lue depuis les fichiers sélectionnés. Les formats disponibles dépendent des codecs pris en charge. La météo utilise [Open-Meteo](https://open-meteo.com/), avec une connexion Internet. Le nom recherché et les coordonnées de la ville sont envoyés au service météo. Halo Desk ne demande pas la géolocalisation.
 
-Dans la vue **Halo**, le robot s’incline vers le pointeur, réagit à la saisie, se concentre avec toi et fête la fin d’un minuteur ou d’une tâche. Au bout de **30 secondes sans mouvement de souris**, il s’assoupit et des « Z z » apparaissent. Bouge le pointeur pour le réveiller. L’option système de réduction des animations est respectée.
+Dans la vue **Halo**, le robot s’incline vers le pointeur, réagit à la saisie, se concentre avec toi et fête la fin d’un minuteur ou d’une tâche. Au bout de **30 secondes sans mouvement de souris**, il s’assoupit et des « Z z » apparaissent. Bouge le pointeur pour le réveiller. Tu peux désactiver les animations dans les réglages.
 
 Lorsqu’une autre fenêtre passe en plein écran, Halo Desk glisse vers le haut et se masque. La capsule revient quand tu quittes le plein écran. Si tu l’avais masquée toi-même, elle reste masquée. Le minuteur continue pendant ce temps.
 
-Halo Desk consulte la position du pointeur et des informations sur la fenêtre active. Il ne capture ni l’écran ni les frappes dans les autres apps. La détection du plein écran utilise les dimensions de la fenêtre active sur macOS et Windows, et son état sur Linux avec X11 et `xprop`. Sous Wayland natif, le plein écran des fenêtres Wayland n’est pas détecté et le sommeil utilise l’inactivité signalée par le système.
+Halo Desk consulte la position du pointeur et des informations sur la fenêtre active. Il ne capture ni l’écran ni les frappes dans les autres apps. La détection du plein écran utilise les dimensions de la fenêtre active sur macOS et Windows, et son état sur Linux avec X11 et `xprop`. Sous Wayland natif, la détection du plein écran et le suivi global du pointeur dépendent de XWayland. Sans accès à X11, le bot utilise les mouvements dans sa fenêtre.
 
 | Commande | Action |
 | --- | --- |
@@ -70,7 +75,7 @@ La capsule suit un minuteur à la fois. Les notes, les tâches et le minuteur re
 
 ## Construire et publier
 
-Pour générer un paquet local pour le système hôte, lance `npm run dist`. Le paquet apparaît dans `dist/`.
+Compile le binaire du système hôte avec `cargo build --release --locked`. Le workflow utilise les scripts dans `packaging/` pour générer les installateurs dans `dist/`.
 
 Pour récupérer le code source depuis GitHub, clone le dépôt.
 
@@ -82,19 +87,21 @@ cd halo-desk
 Le workflow **Builds de bureau** vérifie le bot et compile des paquets sur les machines GitHub. Les builds de la branche principale sont téléchargeables dans **Actions**. Un tag crée ou actualise une **Release** et y joint les paquets des quatre cibles.
 
 ```sh
-git tag v1.3.0
-git push origin v1.3.0
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
-Mets à jour la version dans `package.json` et le lockfile avant de publier un nouveau tag.
+Mets à jour la version dans `Cargo.toml` et `Cargo.lock` avant de publier un nouveau tag.
 
-Sous Linux, la position de la fenêtre, le raccourci global et l’icône de barre système dépendent du compositeur Wayland et de l’environnement de bureau. Si la position ou le raccourci pose problème sous Wayland, essaie `npm start -- --ozone-platform=x11` depuis une session avec XWayland. Les notifications dépendent des réglages système.
+Sous Linux, la position de la fenêtre, le raccourci global et l’icône de barre système dépendent du compositeur Wayland et de l’environnement de bureau. Si la position ou le raccourci pose problème sous Wayland, essaie `env -u WAYLAND_DISPLAY halo-desk` depuis une session avec XWayland. La sélection de fichiers utilise le portail de bureau sous Linux. Les notifications dépendent des réglages système.
 
-## Code
+## Données et code
 
-- `src/main.cjs` gère la fenêtre Electron, les données, les notifications et le raccourci.
-- `src/bot.cjs` interprète les commandes et calcule les expressions sans exécuter de code utilisateur.
-- `src/preload.cjs` expose les seules actions nécessaires à l’interface.
-- `src/index.html`, `src/style.css` et `src/renderer.js` composent l’interface.
+Halo Desk relit le fichier local `halo.json` de la v1.3 pour réutiliser les notes, les tâches, les fichiers épinglés, les morceaux, le minuteur, la ville et les réglages. Le format JSON reste compatible. Un fichier illisible est laissé intact.
+
+- `src/main.rs` démarre l’application graphique et protège les données contre les écritures simultanées.
+- `src/ui.rs` contient la capsule, les animations et les sept vues.
+- `src/bot.rs` interprète les commandes. `src/data.rs` gère le fichier local.
+- `src/desktop.rs` détecte le plein écran. `src/services.rs` gère la météo et l’audio.
 
 Licence MIT.

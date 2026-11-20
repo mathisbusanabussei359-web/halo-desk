@@ -20,18 +20,43 @@ jobs:
           - {name: macOS Intel, runner: macos-15-intel, arch: x64}
           - {name: macOS Apple Silicon, runner: macos-15, arch: arm64}
           - {name: Windows x64, runner: windows-2025, arch: x64}
-          - {name: Linux x64, runner: ubuntu-24.04, arch: x64}
+          - {name: Linux x64, runner: ubuntu-22.04, arch: x64}
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run dist -- --${{ matrix.arch }}
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Dépendances Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxkbcommon-dev libgl1-mesa-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --release --locked
+      - run: cargo build --release --locked
+      - name: Lire la version
+        shell: bash
+        run: echo "HALO_VERSION=$(awk -F'\"' '/^version = / {print $2; exit}' Cargo.toml)" >> "$GITHUB_ENV"
+      - name: Construire le DMG
+        if: runner.os == 'macOS'
+        run: bash packaging/macos.sh "$HALO_VERSION" "${{ matrix.arch }}"
+      - name: Construire l’installateur Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $nsis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          if (!(Test-Path $nsis)) {
+            choco install nsis --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          & $nsis "/DVERSION=$env:HALO_VERSION" "packaging\windows.nsi"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Construire l’AppImage
+        if: runner.os == 'Linux'
+        run: |
+          tool="$RUNNER_TEMP/appimagetool"
+          runtime="$RUNNER_TEMP/runtime-x86_64"
+          curl -fsSL --retry 3 https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -o "$tool"
+          curl -fsSL --retry 3 https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64 -o "$runtime"
+          chmod +x "$tool"
+          bash packaging/linux.sh "$HALO_VERSION" "$tool" "$runtime"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.runner }}-${{ matrix.arch }}

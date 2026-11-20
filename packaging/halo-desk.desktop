@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Halo Desk
+Comment=Capsule flottante et assistant local
+Exec=halo-desk
+Icon=halo-desk
+Terminal=false
+Type=Application
+Categories=Utility;
